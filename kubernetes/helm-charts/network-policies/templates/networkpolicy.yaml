@@ -1,0 +1,124 @@
+{{- $np := .Values.networkPolicies -}}
+{{- $myns := .Values.namespace -}}
+{{/* $appName is defined locally in section 2, so removing the global one. */}}
+
+{{- /* 1. Loop over each named allowFromNamespaces entry */}}
+{{- with $np.allowFromNamespaces }}
+  {{- range $name, $global := . }}
+    {{- if $global.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "network-policies.policyName" (dict "name" (printf "allow-from-%s" $name) "Chart" $.Chart "Release" $.Release "Values" $.Values) }}
+  namespace: {{ $myns }}
+  labels:
+    {{- include "network-policies.labels" . | nindent 4 }}
+spec:
+  podSelector: {} # Apply to all pods in the namespace
+  policyTypes:
+    - Ingress
+  ingress:
+  {{- range $ns := $global.fromNamespaces }}
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: {{ $ns }}
+        podSelector: {} # Allow from all pods in the selected namespace
+      {{- if $global.ports }}
+      ports:
+      {{- range $p := $global.ports }}
+        - protocol: {{ $p.protocol }}
+          port: {{ $p.port }}
+      {{- end }}
+      {{- end }}
+  {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- /* 2. Loop for allowExternalIPblock (specific handling) */}}
+{{- if and $np.applications.allowExternalIPblock $np.applications.allowExternalIPblock.enabled }}
+{{- $appConfig := $np.applications.allowExternalIPblock }}
+{{- $appNameForPolicy := $appConfig.labels.app }}
+{{- $targetAccess := $appConfig.targetsIPblocks }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "network-policies.policyName" (dict "name" (printf "allow-external-to-%s" $appNameForPolicy) "Chart" $.Chart "Release" $.Release "Values" $.Values) }}
+  namespace: {{ $myns }}
+  labels:
+    {{- include "network-policies.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ $appNameForPolicy }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      {{- range $cidr := $targetAccess.externalSubnets }}
+      - ipBlock:
+          cidr: {{ $cidr }}
+      {{- end }}
+      {{- if $targetAccess.ports }}
+      ports:
+      {{- range $p := $targetAccess.ports }}
+        - protocol: {{ $p.protocol }}
+          port: {{ $p.port }}
+      {{- end }}
+      {{- end }}
+{{- end }}
+
+
+{{- /* 3. Loop over all other enabled applications in networkPolicies.applications */}}
+{{- range $appNameKey, $app := $np.applications }}
+  {{- /* Skip allowExternalIPblock as it's handled above, and only process if enabled and has 'with' communications defined */}}
+  {{- if and (ne $appNameKey "allowExternalIPblock") $app.enabled $app.with }}
+    {{- range $appLabelKey, $appLabelValue := $app.labels }} {{/* This iterates over the labels of the pod the policy is FOR */}}
+      {{- range $comm := $app.with }} {{/* This iterates over the communication rules */}}
+        {{- $target := $comm.targets }}
+        {{- $targetNS := $target.namespace | default $app.namespace | default $myns }}
+        {{- range $sourcePodLabel := $target.labels }} {{/* This iterates over the labels of the SOURCE pods */}}
+---
+# Policy for {{ $appLabelValue }} (as {{ $appLabelKey }}) FROM {{ $sourcePodLabel }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "network-policies.policyName" (dict "name" (printf "allow-%s-to-%s" $sourcePodLabel $appLabelValue) "Chart" $.Chart "Release" $.Release "Values" $.Values) }}
+  namespace: {{ $myns }} # Policy is created in the main namespace defined in values.yaml
+  labels:
+    {{- include "network-policies.labels" . | nindent 4 }}
+spec:
+  podSelector: # This policy applies to pods with these labels
+    matchLabels:
+      {{ $appLabelKey }}: {{ $appLabelValue }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - {{- if eq $targetNS $myns }} # If source is in the same namespace
+        podSelector:
+          matchLabels:
+            app: {{ $sourcePodLabel }}
+        {{- else }} # If source is in a different namespace
+        namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: {{ $targetNS }}
+        podSelector:
+          matchLabels:
+            app: {{ $sourcePodLabel }}
+        {{- end }}
+      {{- if $target.ports }}
+      ports:
+      {{- range $p := $target.ports }}
+        - protocol: {{ $p.protocol }}
+          port: {{ $p.port }}
+      {{- end }}
+      {{- end }}
+        {{- end }}  {{/* end sourcePodLabel loop */}}
+      {{- end }}    {{/* end comm loop */}}
+    {{- end }}      {{/* end app.labels loop */}}
+  {{- end }}        {{/* end if condition for app */}}
+{{- end }}          {{/* end applications loop */}}

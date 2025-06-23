@@ -1,0 +1,59 @@
+# GitHub Actions Workflow: Basic CI
+
+name: Basic CI
+
+on:
+  push:
+    branches: [ main, master, develop ] # Adjust branch names as needed
+  pull_request:
+    branches: [ main, master, develop ] # Adjust branch names as needed
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Frontend Build/Test (Example - customize for your framework)
+    - name: Setup Node.js (for Frontend)
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18' # Specify your Node.js version
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        # npm install # Uncomment if you have a package.json
+        echo "Simulating frontend dependency installation"
+    - name: Run Frontend Linter/Tests (Placeholder)
+      run: |
+        cd frontend
+        # npm run lint # Uncomment and configure if you have a linter
+        # npm test # Uncomment and configure if you have tests
+        echo "Simulating frontend linting and tests"
+
+    # Backend Build/Test (Example - Python)
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.9' # Specify your Python version
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        # pip install -r requirements.txt # Uncomment if you have dependencies
+        echo "Simulating backend dependency installation"
+    - name: Run Backend Linter/Tests (Placeholder)
+      run: |
+        cd backend
+        # pip install flake8 pytest # Example tools
+        # flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics # Example lint command
+        # pytest # Example test command
+        echo "Simulating backend linting and tests"
+
+    - name: Placeholder for Docker Build & Push
+      run: echo "In a real scenario, here you would build Docker images and push to a registry."
+
+    - name: Placeholder for K8s Deployment
+      run: echo "In a real scenario, here you might use kubectl or Helm to deploy to a K8s cluster."
