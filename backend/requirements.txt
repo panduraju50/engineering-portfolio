@@ -1,7 +1,0 @@
-# Placeholder for backend Python dependencies
-# Example:
-# flask
-# requests
-
-# If using Node.js, this would be a package.json
-# If using Java, this would be a pom.xml or build.gradle
