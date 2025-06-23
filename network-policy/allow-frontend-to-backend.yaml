@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+  namespace: application # Assuming your app runs in the 'application' namespace
+spec:
+  podSelector:
+    matchLabels:
+      app: backend # This policy applies to pods labeled 'app: backend'
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend # Allow traffic from pods labeled 'app: frontend'
+    ports:
+    - protocol: TCP
+      port: 8080 # Assuming backend listens on port 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-database # Example: Backend to Database
+  namespace: application # Assuming your app runs in the 'application' namespace
+spec:
+  podSelector:
+    matchLabels:
+      app: backend # This policy applies to pods labeled 'app: backend'
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: database # Allow traffic to pods labeled 'app: database'
+    ports:
+    - protocol: TCP
+      port: 5432 # Assuming database (e.g., PostgreSQL) listens on port 5432
+  # Note: You might also need an egress policy for the frontend if it needs to talk to external services
+  # or an ingress policy for the frontend if it needs to receive external traffic (usually handled by Ingress controller).

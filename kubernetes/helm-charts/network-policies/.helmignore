@@ -1,0 +1,46 @@
+# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and absolute path matching.
+# E.g.
+#
+# .DS_Store
+# .git/
+# .gitignore
+# .gitmodules
+# .helmignore
+# charts/
+# examples/
+# README.md.gotmpl
+# test/
+# testdata/
+
+# Ignore common files
+.DS_Store
+.project
+.settings
+.idea/
+*.swp
+*.swo
+
+# Ignore Git files
+.git/
+.gitignore
+.gitattributes
+
+# Ignore CI/CD specific files if any
+.circleci/
+.travis.yml
+Jenkinsfile
+
+# Ignore test files within the chart itself if not part of templates
+tests/
+test/
+
+# Ignore temporary files
+tmp/
+*.tmp
+*.bak
+*.old
+
+# If you have a parent chart and this is a subchart, you might ignore its values if they are overridden by the parent
+# values.yaml.example # If you have example value files you don't want to package
+# README.md # If your README is for source control only and not for the packaged chart (though often it's included)

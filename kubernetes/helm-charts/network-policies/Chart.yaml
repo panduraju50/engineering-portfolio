@@ -1,0 +1,28 @@
+apiVersion: v2
+name: network-policies
+description: A Helm chart for deploying Kubernetes Network Policies
+type: application # or library
+version: 0.1.0
+appVersion: "1.0.0" # Version of the app the chart deploys
+
+# Optional: Maintainer information
+maintainers:
+  - name: YourName # Replace with your name or org
+    email: your.email@example.com # Replace with your email
+
+# Optional: Keywords for discoverability
+keywords:
+  - kubernetes
+  - networkpolicy
+  - security
+  - networking
+
+# Optional: Home page URL for the chart or application
+# home: https://example.com/network-policies-chart
+
+# Optional: Source URLs for the chart
+# sources:
+#   - https://github.com/your-repo/your-chart-source # Replace with your repo if applicable
+
+# Optional: Icon URL
+# icon: https://example.com/icon.png

@@ -1,0 +1,95 @@
+# values.yaml
+namespace: platform
+
+networkPolicies:
+  allowFromNamespaces:
+    monitoring-stage:
+      enabled: true
+      fromNamespaces:
+        - monitoring
+      ports:
+        - protocol: TCP
+          port: 9100
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 8686
+
+    # stage2:
+    #   enabled: true
+    #   applyOnNamespace: netpol-walletapps # Note: applyOnNamespace is not used in the current template, namespace is global via `namespace:`
+    #   fromNamespaces:
+    #     - metrics
+    #     - audit
+      # ports:
+      #   - protocol: TCP
+      #     port: 9200
+
+  applications:
+    allowExternalIPblock:
+      enabled: true
+      labels:
+        app: service-center # This is the application the policy *applies to*
+      targetsIPblocks: # This structure implies these are sources allowed *to* the app
+        externalSubnets:
+          - "0.0.0.0/0"
+        ports:
+          - protocol: TCP
+            port: 5100
+          - protocol: TCP
+            port: 8100
+          - protocol: TCP
+            port: 9100
+
+    # This section seems to define policies where 'service-center' (and others if added)
+    # needs to allow ingress from other specific internal services.
+    # The template structure for "3. Loop enabled applications" will handle this.
+    # We'll assume 'allowIngress' is a grouping name, and each entry under it is an app definition.
+    # For clarity, let's rename 'allowIngress' to 'internalAppComms' or similar if it represents multiple apps.
+    # Or, if 'service-center' is the *only* app configured here, the structure is fine.
+    # The provided template seems to iterate over `networkPolicies.applications` for the third block.
+    # So, 'allowExternalIPblock' and 'allowIngress' will be treated as two distinct app configurations by the template.
+    allowIngress: # This will be treated as an $appName in the template loop
+      enabled: true
+      labels: # These are the labels of the pods this policy *applies to*
+        app: service-center # e.g. service-center allows ingress from service1
+      namespace: platform # Namespace of the pods this policy applies to (can be overridden by target.namespace for source)
+      with: # Defines communication rules
+        - targets: # Describes the source of traffic
+            namespace: platform # Namespace of the source pods
+            labels: # Labels of the source pods
+              - service1 # This will become $label in the template
+            ports:
+              - protocol: TCP
+                port: 5100
+              - protocol: TCP
+                port: 8100
+              - protocol: TCP
+                port: 9100
+        # Example for another source for the same 'service-center' app:
+        # - targets:
+        #     namespace: another-ns
+        #     labels:
+        #       - service2
+        #     ports:
+        #       - protocol: TCP
+        #         port: 1234
+
+    # Example for another application requiring ingress policies:
+    # another-app:
+    #   enabled: true
+    #   labels:
+    #     app: another-app-pod-label
+    #   namespace: platform
+    #   with:
+    #     - targets:
+    #         namespace: platform
+    #         labels:
+    #           - service-center # Allow 'another-app' to be accessed by 'service-center'
+    #         ports:
+    #           - protocol: TCP
+    #             port: 8888
