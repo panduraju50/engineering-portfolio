@@ -1,0 +1,82 @@
+name: SQL Review tables
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "databases/mysql/market_domain/tables/*.sql"
+
+jobs:
+  deploy-to-prod:
+    permissions:
+        pull-requests: write
+        id-token: write
+        contents: write
+        issues: write
+    runs-on: [should run on arc runner where the bytebase is deployed ]
+    environment: prod
+    env:
+      BYTEBASE_URL: "http://bytebase-entrypoint.bytebase"
+      BYTEBASE_SERVICE_ACCOUNT: "bytebase-sa@service.bytebase.com"
+      BYTEBASE_PROJECT: "projects/example-apps-global-sql"
+      BYTEBASE_TARGETS: "instances/example-apps-global-sql/databases/example_domain"
+      # ISSUE_TITLE:
+      #   '[${{ github.repository }}#${{ github.event.pull_request.number }}] ${{ github.event.pull_request.title }}'
+      # DESCRIPTION:
+      #   'Triggered by ${{ github.event.repository.html_url }}/pull/${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}'
+      FILE_PATTERN: "databases/mysql/market_domain/tables/*.sql"
+      HEADERS: >-
+        {
+          "Accept-Encoding": "deflate, gzip",
+        } 
+    outputs:
+      bytebase-plan: ${{ steps.create-plan.outputs.plan }}
+      deployment-required: ${{ steps.create-plan.outputs.deployment-required }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Login to Bytebase
+        id: login
+        uses: bytebase/login-action@v1
+        with:
+          bytebase-url: ${{ env.BYTEBASE_URL }}
+          service-key: ${{ env.BYTEBASE_SERVICE_ACCOUNT }}
+          service-secret: ${{ secrets.BYTEBASE_PASSWORD }}
+      - name: Print Bytebase login response
+        env:
+          GITHUB_CONTEXT: ${{ toJson(steps.login.outputs) }}
+        run: |
+          echo "$GITHUB_CONTEXT"
+          echo "Login output: ${{ steps.login.outputs }}"
+      - name: Check release prod
+        id: create-release
+        uses: bytebase/create-release-action@v1.0.5
+        with:
+          url: ${{ env.BYTEBASE_URL }}
+          token: ${{ steps.login.outputs.token }}
+          file-pattern: ${{ env.FILE_PATTERN }}
+          # fail the action if release checks report any error.
+          check-release: "FAIL_ON_ERROR"
+          project: ${{ env.BYTEBASE_PROJECT }}
+          targets: ${{ env.BYTEBASE_TARGETS }}
+          validate-only: false
+      - name: Create plan
+        id: create-plan
+        uses: bytebase/create-plan-from-release-action@v1
+        with:
+          url: ${{ env.BYTEBASE_URL }}
+          token: ${{ steps.login.outputs.token }}
+          project: ${{ env.BYTEBASE_PROJECT }}
+          release: ${{ steps.create-release.outputs.release }}
+          targets: ${{ env.BYTEBASE_TARGETS }}
+          check-plan: "SKIP"
+      - name: Rollout
+        id: rollout
+        uses: bytebase/rollout-action@v2
+        if: ${{ steps.create-plan.outputs.deployment-required == 'true' }}
+        with:
+          url: ${{ env.BYTEBASE_URL }}
+          token: ${{ steps.login.outputs.token }}
+          plan: ${{ steps.create-plan.outputs.plan }}
+          target-stage: environments/prod
