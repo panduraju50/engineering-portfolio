@@ -1,6 +1,6 @@
 ### 📝 Task Simplicity Checklist
 #### 🧐 Clarify the Goal
-- [ ] What’s the one core outcome I need to deliver?
+* [ ] What’s the one core outcome I need to deliver?
 - [ ] Who is this for and what problem am I solving?
 #### 🎯 Identify Core Requirements
 - [ ] List the must-have features, no more than 3.
