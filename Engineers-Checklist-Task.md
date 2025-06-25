@@ -1,4 +1,4 @@
-📝 Task Simplicity Checklist
+## 📝 Task Simplicity Checklist
 🧐 Clarify the Goal
  [ ] What’s the one core outcome I need to deliver?
  [ ] Who is this for and what problem am I solving?
